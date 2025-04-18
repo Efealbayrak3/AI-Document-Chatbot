@@ -23,3 +23,11 @@ env/
 
 # Windows system files
 Thumbs.db
+
+
+.vscode/
+.idea/
+docs.db
+desktop.ini
+*.log
+instance/
