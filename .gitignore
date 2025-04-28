@@ -1,0 +1,33 @@
+# Python 
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Exclude files
+documents_docu/downloaded_docs/*
+
+# Keep the folder structure (load even if empty)
+!documents_docu/downloaded_docs/.gitkeep
+
+# Virtual
+venv/
+ENV/
+env/
+
+# .env file
+.env
+
+# macOS system files
+.DS_Store
+
+# Windows system files
+Thumbs.db
+
+
+.vscode/
+.idea/
+docs.db
+desktop.ini
+*.log
+instance/

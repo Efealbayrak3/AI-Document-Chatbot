@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Document Chatbot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #474242;
+            font-family: 'Segoe UI', sans-serif;
+            color: #bd9999;
+        }
+        .chat-container {
+            max-width: 850px;
+            margin: 80px auto;
+            padding: 40px;
+            background: linear-gradient(145deg, #1f1f1f, #2a2a2a);
+            border-radius: 24px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.6);
+        }
+        .title {
+            font-size: 2.2rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-align: center;
+            color: #ffffff;
+        }
+        .form-control, .btn {
+            height: 52px;
+            font-size: 1rem;
+        }
+        .form-control {
+            background-color: #2e2e2e;
+            color: #f1f1f1;
+            border: 1px solid #444;
+        }
+        .form-control::placeholder {
+            color: #aaa;
+        }
+        .btn-primary {
+            background-color: #00bcd4;
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #00acc1;
+        }
+        .response-box {
+            margin-top: 35px;
+            padding: 25px;
+            background-color: #1d1d1d;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: inset 0 0 10px rgba(255,255,255,0.05);
+        }
+        .loading {
+            color: #00acc1;
+            font-style: italic;
+            padding: 10px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="title">Document Chatbot</div>
+        <div class="d-flex gap-2">
+            <input type="text" id="queryInput" class="form-control" placeholder="What are you looking for?">
+            <button class="btn btn-primary" onclick="sendQuery()">Search</button>
+        </div>
+        <div id="loadingBox" class="loading" style="display:none;">Searching...</div>
+        <div id="responseBox" class="response-box mt-4" style="display:none;"></div>
+    </div>
+
+    <script>
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            switch (ext) {
+                case 'pdf': return '📄';
+                case 'zip': return '🗂️';
+                case 'docx': return '📘';
+                case 'png':
+                case 'jpg':
+                case 'jpeg': return '🖼️';
+                default: return '📁';
+            }
+        }
+
+        async function sendQuery() {
+            const input = document.getElementById("queryInput");
+            const query = input.value.trim();
+            if (!query) return;
+
+            const loading = document.getElementById("loadingBox");
+            const box = document.getElementById("responseBox");
+            box.style.display = "none";
+            loading.style.display = "block";
+
+            const response = await fetch("/api/query", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query: query })
+            });
+
+            const data = await response.json();
+            let responseText = data.response;
+
+            
+            responseText = responseText.replace(/<a href='(.*?)'>(.*?)<\/a>/g, (match, link, name) => {
+                return `${getFileIcon(name)} <a href='${link}' target='_blank'>${name}</a>`;
+            });
+
+            box.innerHTML = `<p><strong>Soru:</strong> ${query}</p><p><strong>Yanıt:</strong><br>${responseText}</p>`;
+            box.style.display = "block";
+            loading.style.display = "none";
+            input.value = ""; 
+        }
+    </script>
+</body>
+</html>
