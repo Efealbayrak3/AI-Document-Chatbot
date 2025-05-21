@@ -1,6 +1,8 @@
-Flask==3.1.0
-requests==2.32.3
-PyMuPDF==1.25.3
-Flask-Limiter==3.12
-python-dotenv==1.0.1
-watchdog>=3.0.0
+flask
+openai
+sentence-transformers
+pymupdf
+pytesseract
+watchdog
+flask-limiter
+requests

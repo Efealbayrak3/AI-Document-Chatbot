@@ -16,6 +16,10 @@ from flask_limiter.util import get_remote_address
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from threading import Thread
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+import openai
 
 app = Flask(__name__)
 limiter = Limiter(get_remote_address, app=app, default_limits=["10 per minute"])
@@ -27,6 +31,12 @@ document_folder = os.path.join(BASE_DIR, "downloaded_docs")
 HF_API_URL = "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta"
 HF_API_KEY = os.getenv("HF_API_KEY") or "YOUR_HUGGINGFACE_API_KEY_HERE"
 document_cache = {}
+model = SentenceTransformer("all-MiniLM-L6-v2")
+openai.api_key = os.getenv("OPENAI_API_KEY") or "YOUR_OPENAI_API_KEY_HERE"
+
+def split_into_chunks(text, chunk_size=400):
+    words = text.split()
+    return [" ".join(words[i:i+chunk_size]) for i in range(0, len(words), chunk_size)]
 
 #Tesseract Installation Control
 tesseract_path = shutil.which("tesseract")
@@ -262,14 +272,39 @@ def ai_chatbot_response(query):
     blocked_words = ['hack', 'sql', 'curl', 'rm -rf', 'exploit']
     if any(word in query.lower() for word in blocked_words):
         return "🚫 Inappropriate content detected."
-    links = find_matching_document(query)
-    if links and isinstance(links, list) and len(links) > 0:
-        filename_main = unquote(links[0].split('/')[-1])
-        log_query(query, filename_main)
-        track_url = url_for('track_click', filename=filename_main, q=query)
-        return f"📄 Relevant Document: <a href='{track_url}'>{filename_main}</a>"
-    else:
-        return "❌ No suitable document found."
+
+    # Embed model ve similarity için
+    query_embed = model.encode([normalize(query)])
+    chunk_scores = []
+
+    for fname, doc in document_cache.items():
+        chunks = split_into_chunks(doc["text"])
+        for chunk in chunks:
+            chunk_embed = model.encode([chunk])
+            score = cosine_similarity([query_embed[0]], [chunk_embed[0]])[0][0]
+            chunk_scores.append((score, chunk, fname))
+
+    top_chunks = sorted(chunk_scores, reverse=True)[:3]
+    context = "\n\n---\n\n".join([f"{c[1]}" for c in top_chunks])
+
+    prompt = f"""
+Belgelerden alınan parçalar aşağıda verilmiştir. Soruya teknik ve açık bir şekilde yanıt ver.
+
+🔍 Soru: "{query}"
+
+📚 Belgeler:
+{context}
+    """
+
+    headers = {"Authorization": f"Bearer {HF_API_KEY}"}
+    response = requests.post(HF_API_URL, headers=headers, json={"inputs": prompt})
+
+    try:
+        return response.json()[0]["generated_text"].strip()
+    except Exception as e:
+        print(f"[ERROR] Hugging Face yanıtı başarısız: {e}")
+        return "⚠️ Yanıt alınamadı. Lütfen daha sonra tekrar deneyin."
+
 
 @app.route("/", methods=["GET", "POST"])
 def home():
